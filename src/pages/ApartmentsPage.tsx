@@ -1,30 +1,54 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useApartmentStore } from '@/lib/store';
-import { getUnitLabel } from '@/lib/types';
+import { getUnitLabel, calculateRentStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { UserPlus, UserMinus, Phone, Calendar, DollarSign } from 'lucide-react';
+import { UserPlus, UserMinus, Phone, Calendar, DollarSign, Clock } from 'lucide-react';
 
 export default function ApartmentsPage() {
   const { t, lang } = useI18n();
   const { apartments, setTenant, removeTenant } = useApartmentStore();
   const [editingApt, setEditingApt] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: '', phone: '', moveInDate: '', monthlyRent: '' });
+  const [form, setForm] = useState({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (!editingApt) return;
     setTenant(editingApt, {
       name: form.name,
       phone: form.phone,
       moveInDate: form.moveInDate,
       monthlyRent: Number(form.monthlyRent),
+      paymentMonths: Number(form.paymentMonths),
     });
     setEditingApt(null);
-    setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '' });
+    setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
+  }, [editingApt, form, setTenant]);
+
+  const rentStatuses = useMemo(() => {
+    const map: Record<string, ReturnType<typeof calculateRentStatus>> = {};
+    apartments.forEach(apt => {
+      if (apt.tenant) {
+        map[apt.id] = calculateRentStatus(apt.tenant.moveInDate, apt.tenant.paymentMonths);
+      }
+    });
+    return map;
+  }, [apartments]);
+
+  const getStatusColor = (status: 'good' | 'near_due' | 'overdue') => {
+    if (status === 'overdue') return 'bg-destructive/10 text-destructive';
+    if (status === 'near_due') return 'bg-warning/10 text-warning';
+    return 'bg-success/10 text-success';
+  };
+
+  const getStatusDot = (status: 'good' | 'near_due' | 'overdue') => {
+    if (status === 'overdue') return 'bg-destructive';
+    if (status === 'near_due') return 'bg-warning';
+    return 'bg-success';
   };
 
   return (
@@ -33,14 +57,19 @@ export default function ApartmentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {apartments.map(apt => {
           const unit = getUnitLabel(apt.floor, apt.position, lang);
+          const rentStatus = rentStatuses[apt.id];
           return (
             <Card key={apt.id} className="overflow-hidden">
-              <div className={`h-1.5 ${apt.tenant ? 'gold-gradient' : 'bg-muted'}`} />
+              <div className={`h-1.5 ${apt.tenant ? (rentStatus?.status === 'overdue' ? 'bg-destructive' : rentStatus?.status === 'near_due' ? 'bg-warning' : 'gold-gradient') : 'bg-muted'}`} />
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center justify-between">
                   <span>{unit}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${apt.tenant ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
-                    {apt.tenant ? t('tenant') : t('noTenant')}
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${apt.tenant ? getStatusColor(rentStatus?.status || 'good') : 'bg-muted text-muted-foreground'}`}>
+                    {apt.tenant ? (
+                      rentStatus?.status === 'overdue' ? (lang === 'am' ? 'ያለፈ' : 'Overdue') :
+                      rentStatus?.status === 'near_due' ? (lang === 'am' ? 'ቅርብ' : 'Near Due') :
+                      t('tenant')
+                    ) : t('noTenant')}
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -62,8 +91,21 @@ export default function ApartmentsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span>{apt.tenant.monthlyRent.toLocaleString()} Br/mo</span>
+                        <span>{apt.tenant.monthlyRent.toLocaleString()} Br/mo × {apt.tenant.paymentMonths}mo</span>
                       </div>
+                      {rentStatus && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${getStatusDot(rentStatus.status)}`} />
+                            <span className={rentStatus.status === 'overdue' ? 'text-destructive font-medium' : rentStatus.status === 'near_due' ? 'text-warning font-medium' : ''}>
+                              {rentStatus.daysLeft > 0
+                                ? `${rentStatus.daysLeft} ${lang === 'am' ? 'ቀናት ቀርተዋል' : 'days left'}`
+                                : `${Math.abs(rentStatus.daysLeft)} ${lang === 'am' ? 'ቀናት ያለፈ' : 'days overdue'}`}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <Button
                       variant="outline"
@@ -84,7 +126,7 @@ export default function ApartmentsPage() {
                         className="w-full"
                         onClick={() => {
                           setEditingApt(apt.id);
-                          setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '' });
+                          setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
                         }}
                       >
                         <UserPlus className="h-3.5 w-3.5 mr-1.5" />
@@ -111,6 +153,17 @@ export default function ApartmentsPage() {
                         <div className="space-y-1">
                           <Label>{t('monthlyRent')}</Label>
                           <Input type="number" value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: e.target.value }))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>{lang === 'am' ? 'የክፍያ ወራት (1-12)' : 'Payment Months (1-12)'}</Label>
+                          <Select value={form.paymentMonths} onValueChange={v => setForm(f => ({ ...f, paymentMonths: v }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 12 }, (_, i) => (
+                                <SelectItem key={i + 1} value={String(i + 1)}>{i + 1} {lang === 'am' ? 'ወር' : 'month(s)'}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <Button onClick={handleSave} className="w-full gold-gradient text-primary-foreground">{t('save')}</Button>
                       </div>
