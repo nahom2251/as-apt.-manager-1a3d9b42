@@ -25,7 +25,6 @@ export const useApartmentStore = create<ApartmentStore>()(
     (set) => ({
       apartments: initialApartments,
       bills: [],
-
       setTenant: (apartmentId, tenantData) =>
         set(state => ({
           apartments: state.apartments.map(a =>
@@ -39,40 +38,29 @@ export const useApartmentStore = create<ApartmentStore>()(
               : a
           ),
         })),
-
       addBill: (bill) =>
         set(state => ({
           bills: [
             ...state.bills,
-            {
-              ...bill,
-              id: `bill-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-              createdAt: new Date().toISOString(),
-            },
+            { ...bill, id: `bill-${Date.now()}-${Math.random().toString(36).slice(2)}`, createdAt: new Date().toISOString() },
           ],
         })),
-
       markBillPaid: (billId) =>
         set(state => ({
           bills: state.bills.map(b =>
-            b.id === billId
-              ? { ...b, status: 'paid', paidAt: new Date().toISOString() }
-              : b
+            b.id === billId ? { ...b, status: 'paid', paidAt: new Date().toISOString() } : b
           ),
         })),
-
       deleteBills: (ids) =>
         set(state => ({
           bills: state.bills.filter(b => !ids.includes(b.id)),
         })),
-
       removeTenant: (apartmentId) =>
         set(state => ({
           apartments: state.apartments.map(a =>
             a.id === apartmentId ? { ...a, tenant: null } : a
           ),
         })),
-
       updateTenantPaymentMonths: (apartmentId, paymentMonths) =>
         set(state => ({
           apartments: state.apartments.map(a =>
