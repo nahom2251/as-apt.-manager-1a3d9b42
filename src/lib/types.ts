@@ -31,8 +31,10 @@ export interface Bill {
   kwh?: number;
   rate?: number;
 
-  // ✅ NEW FIELD
-  monthsCount?: number;
+  // NEW fields for rent period
+  monthsCount?: number; // number of months paid
+  startDate?: string;   // ISO string of rent start
+  endDate?: string;     // ISO string of rent end
 }
 
 export interface AppUser {
