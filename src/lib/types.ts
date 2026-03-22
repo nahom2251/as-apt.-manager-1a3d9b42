@@ -30,6 +30,9 @@ export interface Bill {
   paidAt?: string;
   kwh?: number;
   rate?: number;
+
+  // ✅ NEW FIELD
+  monthsCount?: number;
 }
 
 export interface AppUser {
