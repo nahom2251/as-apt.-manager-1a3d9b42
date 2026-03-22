@@ -28,10 +28,12 @@ export default function BillingPage() {
     type: 'rent' as 'rent' | 'electricity' | 'water',
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    amount: '',
-    kwh: '',
-    rate: '',
-    monthsCount: 1, // ✅ NEW
+    amount: '',        
+    kwh: '',           
+    rate: '',          
+    monthsCount: 1,    
+    startDate: '',     
+    endDate: '',       
   });
 
   const tenantApts = apartments.filter(a => a.tenant);
@@ -49,12 +51,18 @@ export default function BillingPage() {
     if (!apt?.tenant) return;
 
     let amount = Number(newBill.amount);
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
 
     if (newBill.type === 'electricity') {
       amount = calculateElectricityBill(Number(newBill.kwh), Number(newBill.rate));
     }
 
     if (newBill.type === 'rent') {
+      startDate = new Date(apt.tenant.moveInDate);
+      endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + (newBill.monthsCount || 1));
+
       amount = Number(newBill.amount) * (newBill.monthsCount || 1);
     }
 
@@ -70,11 +78,12 @@ export default function BillingPage() {
       status: 'pending',
       kwh: newBill.type === 'electricity' ? Number(newBill.kwh) : undefined,
       rate: newBill.type === 'electricity' ? Number(newBill.rate) : undefined,
-      monthsCount: newBill.type === 'rent' ? newBill.monthsCount : undefined, // ✅
+      monthsCount: newBill.type === 'rent' ? newBill.monthsCount : undefined,
+      startDate: startDate?.toISOString(),
+      endDate: endDate?.toISOString(),
     });
 
     setShowNewBill(false);
-
     setNewBill({
       apartmentId: '',
       type: 'rent',
@@ -84,6 +93,8 @@ export default function BillingPage() {
       kwh: '',
       rate: '',
       monthsCount: 1,
+      startDate: '',
+      endDate: '',
     });
   };
 
@@ -193,7 +204,7 @@ export default function BillingPage() {
                 ) : newBill.type === 'rent' ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label>{t('amount')} (Birr)</Label>
+                      <Label>Monthly Rent (Birr)</Label>
                       <Input type="number" value={newBill.amount} onChange={e => setNewBill(f => ({ ...f, amount: e.target.value }))} />
                     </div>
                     <div className="space-y-1">
@@ -203,7 +214,7 @@ export default function BillingPage() {
                   </div>
                 ) : (
                   <div className="space-y-1">
-                    <Label>{t('amount')} (Birr)</Label>
+                    <Label>Amount (Birr)</Label>
                     <Input type="number" value={newBill.amount} onChange={e => setNewBill(f => ({ ...f, amount: e.target.value }))} />
                   </div>
                 )}
@@ -264,12 +275,14 @@ export default function BillingPage() {
                       {bill.tenantName} — {bill.unitLabel}
                     </div>
 
-                    <div className="text-xs text-muted-foreground">
-                      {MONTHS[bill.month - 1]} {bill.year}
-                      {bill.type === 'rent' && bill.monthsCount ? ` • ${bill.monthsCount} months` : ''}
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {bill.type === 'rent' && bill.startDate && bill.endDate
+                        ? `${new Date(bill.startDate).toLocaleDateString()} → ${new Date(bill.endDate).toLocaleDateString()}`
+                        : `${MONTHS[bill.month - 1]} ${bill.year}`
+                      }
                       {' • '}
                       {bill.amount.toLocaleString()} Birr
-                    </div>
+                    </p>
                   </div>
                 </div>
 
