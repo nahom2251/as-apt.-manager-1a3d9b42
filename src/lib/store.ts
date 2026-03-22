@@ -10,6 +10,7 @@ interface ApartmentStore {
   markBillPaid: (billId: string) => void;
   deleteBills: (ids: string[]) => void;
   removeTenant: (apartmentId: string) => void;
+  updateTenantPaymentMonths: (apartmentId: string, paymentMonths: number) => void;
 }
 
 const initialApartments: Apartment[] = APARTMENTS_CONFIG.map((cfg, i) => ({
@@ -55,6 +56,14 @@ export const useApartmentStore = create<ApartmentStore>()(
         set(state => ({
           apartments: state.apartments.map(a =>
             a.id === apartmentId ? { ...a, tenant: null } : a
+          ),
+        })),
+      updateTenantPaymentMonths: (apartmentId, paymentMonths) =>
+        set(state => ({
+          apartments: state.apartments.map(a =>
+            a.id === apartmentId && a.tenant
+              ? { ...a, tenant: { ...a.tenant, paymentMonths } }
+              : a
           ),
         })),
     }),

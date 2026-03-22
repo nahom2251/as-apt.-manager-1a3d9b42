@@ -11,6 +11,7 @@ export interface Tenant {
   phone: string;
   moveInDate: string;
   monthlyRent: number;
+  paymentMonths: number; // how many months paid upfront (1-12)
   apartmentId: string;
 }
 
@@ -27,7 +28,6 @@ export interface Bill {
   status: 'pending' | 'paid';
   createdAt: string;
   paidAt?: string;
-  // electricity specific
   kwh?: number;
   rate?: number;
 }
@@ -88,7 +88,7 @@ export function calculateElectricityBill(kwh: number, rate: number) {
   return base + serviceFee + tax + tvTax + controlTax;
 }
 
-export function calculateRentStatus(moveInDate: string, monthlyRent: number, paymentMonths: number) {
+export function calculateRentStatus(moveInDate: string, paymentMonths: number) {
   const moveIn = new Date(moveInDate);
   const now = new Date();
   const paidUntil = new Date(moveIn);
@@ -101,5 +101,5 @@ export function calculateRentStatus(moveInDate: string, monthlyRent: number, pay
   if (daysLeft <= 0) status = 'overdue';
   else if (daysLeft <= 5) status = 'near_due';
 
-  return { daysLeft, status };
+  return { daysLeft, status, paidUntil };
 }
