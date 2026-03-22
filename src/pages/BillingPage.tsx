@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useApartmentStore } from '@/lib/store';
-import { getUnitLabel, calculateElectricityBill, PAYMENT_CONFIG } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getUnitLabel, calculateElectricityBill } from '@/lib/types';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,14 +17,21 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 export default function BillingPage() {
   const { t, lang } = useI18n();
   const { apartments, bills, addBill, markBillPaid, deleteBills } = useApartmentStore();
+
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
   const [selected, setSelected] = useState<string[]>([]);
   const [showNewBill, setShowNewBill] = useState(false);
+
   const [newBill, setNewBill] = useState({
-    apartmentId: '', type: 'rent' as 'rent' | 'electricity' | 'water',
-    month: new Date().getMonth() + 1, year: new Date().getFullYear(),
-    amount: '', kwh: '', rate: '',
+    apartmentId: '',
+    type: 'rent' as 'rent' | 'electricity' | 'water',
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+    amount: '',
+    kwh: '',
+    rate: '',
+    monthsCount: 1, // ✅ NEW
   });
 
   const tenantApts = apartments.filter(a => a.tenant);
@@ -40,10 +47,17 @@ export default function BillingPage() {
   const handleCreateBill = () => {
     const apt = apartments.find(a => a.id === newBill.apartmentId);
     if (!apt?.tenant) return;
+
     let amount = Number(newBill.amount);
+
     if (newBill.type === 'electricity') {
       amount = calculateElectricityBill(Number(newBill.kwh), Number(newBill.rate));
     }
+
+    if (newBill.type === 'rent') {
+      amount = Number(newBill.amount) * (newBill.monthsCount || 1);
+    }
+
     addBill({
       tenantId: apt.tenant.id,
       tenantName: apt.tenant.name,
@@ -56,9 +70,21 @@ export default function BillingPage() {
       status: 'pending',
       kwh: newBill.type === 'electricity' ? Number(newBill.kwh) : undefined,
       rate: newBill.type === 'electricity' ? Number(newBill.rate) : undefined,
+      monthsCount: newBill.type === 'rent' ? newBill.monthsCount : undefined, // ✅
     });
+
     setShowNewBill(false);
-    setNewBill({ apartmentId: '', type: 'rent', month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: '', kwh: '', rate: '' });
+
+    setNewBill({
+      apartmentId: '',
+      type: 'rent',
+      month: new Date().getMonth() + 1,
+      year: new Date().getFullYear(),
+      amount: '',
+      kwh: '',
+      rate: '',
+      monthsCount: 1,
+    });
   };
 
   const toggleSelect = (id: string) => {
@@ -74,23 +100,33 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t('billing')}</h1>
+
         <div className="flex items-center gap-2">
           {selected.length > 0 && (
             <Button variant="outline" size="sm" className="text-destructive" onClick={handleDeleteSelected}>
               <Trash2 className="h-3.5 w-3.5 mr-1" />{t('delete')} ({selected.length})
             </Button>
           )}
+
           <Dialog open={showNewBill} onOpenChange={setShowNewBill}>
             <DialogTrigger asChild>
               <Button size="sm" className="gold-gradient text-primary-foreground">
                 <Plus className="h-3.5 w-3.5 mr-1" />{t('generateBill')}
               </Button>
             </DialogTrigger>
+
             <DialogContent>
-              <DialogHeader><DialogTitle>{t('generateBill')}</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>{t('generateBill')}</DialogTitle>
+              </DialogHeader>
+
               <div className="space-y-3 pt-2">
+
+                {/* Apartment */}
                 <div className="space-y-1">
                   <Label>{t('unit')}</Label>
                   <Select value={newBill.apartmentId} onValueChange={v => setNewBill(f => ({ ...f, apartmentId: v }))}>
@@ -104,6 +140,8 @@ export default function BillingPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Type */}
                 <div className="space-y-1">
                   <Label>Type</Label>
                   <Select value={newBill.type} onValueChange={(v: any) => setNewBill(f => ({ ...f, type: v }))}>
@@ -115,21 +153,32 @@ export default function BillingPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Month & Year */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label>{t('month')}</Label>
                     <Select value={String(newBill.month)} onValueChange={v => setNewBill(f => ({ ...f, month: Number(v) }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+                        {MONTHS.map((m, i) => (
+                          <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-1">
                     <Label>{t('year')}</Label>
-                    <Input type="number" value={newBill.year} onChange={e => setNewBill(f => ({ ...f, year: Number(e.target.value) }))} />
+                    <Input
+                      type="number"
+                      value={newBill.year}
+                      onChange={e => setNewBill(f => ({ ...f, year: Number(e.target.value) }))}
+                    />
                   </div>
                 </div>
+
+                {/* Dynamic Inputs */}
                 {newBill.type === 'electricity' ? (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
@@ -138,7 +187,18 @@ export default function BillingPage() {
                     </div>
                     <div className="space-y-1">
                       <Label>{t('rate')}</Label>
-                      <Input type="number" step="0.01" value={newBill.rate} onChange={e => setNewBill(f => ({ ...f, rate: e.target.value }))} />
+                      <Input type="number" value={newBill.rate} onChange={e => setNewBill(f => ({ ...f, rate: e.target.value }))} />
+                    </div>
+                  </div>
+                ) : newBill.type === 'rent' ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label>{t('amount')} (Birr)</Label>
+                      <Input type="number" value={newBill.amount} onChange={e => setNewBill(f => ({ ...f, amount: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Number of Months</Label>
+                      <Input type="number" min={1} value={newBill.monthsCount} onChange={e => setNewBill(f => ({ ...f, monthsCount: Number(e.target.value) }))} />
                     </div>
                   </div>
                 ) : (
@@ -147,7 +207,10 @@ export default function BillingPage() {
                     <Input type="number" value={newBill.amount} onChange={e => setNewBill(f => ({ ...f, amount: e.target.value }))} />
                   </div>
                 )}
-                <Button onClick={handleCreateBill} className="w-full gold-gradient text-primary-foreground">{t('generateBill')}</Button>
+
+                <Button onClick={handleCreateBill} className="w-full gold-gradient text-primary-foreground">
+                  {t('generateBill')}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -155,14 +218,17 @@ export default function BillingPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex gap-3">
         <Select value={filterMonth} onValueChange={setFilterMonth}>
-          <SelectTrigger className="w-32"><SelectValue placeholder={t('month')} /></SelectTrigger>
+          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('all')}</SelectItem>
-            {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+            {MONTHS.map((m, i) => (
+              <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
+
         <Select value={filterType} onValueChange={setFilterType}>
           <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -174,63 +240,61 @@ export default function BillingPage() {
         </Select>
       </div>
 
-      {/* Bills list */}
+      {/* Bills */}
       <div className="space-y-3">
         {filteredBills.length === 0 ? (
-          <Card><CardContent className="p-8 text-center text-muted-foreground">No bills found.</CardContent></Card>
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground">
+              No bills found.
+            </CardContent>
+          </Card>
         ) : (
           filteredBills.map(bill => (
             <Card key={bill.id}>
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  <div className="flex items-center gap-3 flex-1">
-                    <Checkbox
-                      checked={selected.includes(bill.id)}
-                      onCheckedChange={() => toggleSelect(bill.id)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-sm">{bill.tenantName}</span>
-                        <span className="text-xs text-muted-foreground">{bill.unitLabel}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          bill.type === 'rent' ? 'bg-primary/10 text-primary' :
-                          bill.type === 'electricity' ? 'bg-warning/10 text-warning' : 'bg-info/10 text-info'
-                        }`}>
-                          {t(bill.type)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {MONTHS[bill.month - 1]} {bill.year} • {bill.amount.toLocaleString()} Birr
-                      </p>
+              <CardContent className="p-4 flex justify-between items-center">
+
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    checked={selected.includes(bill.id)}
+                    onCheckedChange={() => toggleSelect(bill.id)}
+                  />
+
+                  <div>
+                    <div className="text-sm font-medium">
+                      {bill.tenantName} — {bill.unitLabel}
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      {MONTHS[bill.month - 1]} {bill.year}
+                      {bill.type === 'rent' && bill.monthsCount ? ` • ${bill.monthsCount} months` : ''}
+                      {' • '}
+                      {bill.amount.toLocaleString()} Birr
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                      bill.status === 'paid' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-                    }`}>
-                      {bill.status === 'paid' ? t('paid') : t('pending')}
-                    </span>
-                    {bill.status === 'pending' && (
-                      <Button variant="ghost" size="sm" onClick={() => markBillPaid(bill.id)} className="text-success">
-                        <Check className="h-3.5 w-3.5 mr-1" />{t('markAsPaid')}
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (bill.status === 'paid') {
-                          generateReceiptPDF(bill);
-                        } else {
-                          generateInvoicePDF(bill);
-                        }
-                      }}
-                    >
-                      <Download className="h-3.5 w-3.5 mr-1" />
-                      {bill.status === 'paid' ? t('downloadReceipt') : t('downloadInvoice')}
-                    </Button>
-                  </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  {bill.status === 'pending' && (
+                    <Button size="sm" onClick={() => markBillPaid(bill.id)}>
+                      <Check className="h-3.5 w-3.5 mr-1" />
+                      {t('markAsPaid')}
+                    </Button>
+                  )}
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      bill.status === 'paid'
+                        ? generateReceiptPDF(bill)
+                        : generateInvoicePDF(bill)
+                    }
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                    {bill.status === 'paid' ? t('downloadReceipt') : t('downloadInvoice')}
+                  </Button>
+                </div>
+
               </CardContent>
             </Card>
           ))
