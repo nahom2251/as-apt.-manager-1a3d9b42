@@ -32,8 +32,6 @@ export default function BillingPage() {
     kwh: '',           
     rate: '',          
     monthsCount: 1,    
-    startDate: '',     
-    endDate: '',       
   });
 
   const tenantApts = apartments.filter(a => a.tenant);
@@ -54,16 +52,20 @@ export default function BillingPage() {
     let startDate: Date | undefined;
     let endDate: Date | undefined;
 
-    if (newBill.type === 'electricity') {
-      amount = calculateElectricityBill(Number(newBill.kwh), Number(newBill.rate));
-    }
-
     if (newBill.type === 'rent') {
-      startDate = new Date(apt.tenant.moveInDate);
+      const lastRentBill = bills
+        .filter(b => b.apartmentId === apt.id && b.type === 'rent' && b.endDate)
+        .sort((a, b) => new Date(b.endDate!).getTime() - new Date(a.endDate!).getTime())[0];
+
+      startDate = lastRentBill ? new Date(lastRentBill.endDate!) : new Date(apt.tenant.moveInDate);
       endDate = new Date(startDate);
       endDate.setMonth(endDate.getMonth() + (newBill.monthsCount || 1));
 
-      amount = Number(newBill.amount) * (newBill.monthsCount || 1);
+      amount = apt.tenant.monthlyRent * (newBill.monthsCount || 1);
+    }
+
+    if (newBill.type === 'electricity') {
+      amount = calculateElectricityBill(Number(newBill.kwh), Number(newBill.rate));
     }
 
     addBill({
@@ -79,8 +81,8 @@ export default function BillingPage() {
       kwh: newBill.type === 'electricity' ? Number(newBill.kwh) : undefined,
       rate: newBill.type === 'electricity' ? Number(newBill.rate) : undefined,
       monthsCount: newBill.type === 'rent' ? newBill.monthsCount : undefined,
-      startDate: startDate?.toISOString(),
-      endDate: endDate?.toISOString(),
+      startDate: newBill.type === 'rent' ? startDate?.toISOString() : undefined,
+      endDate: newBill.type === 'rent' ? endDate?.toISOString() : undefined,
     });
 
     setShowNewBill(false);
@@ -93,8 +95,6 @@ export default function BillingPage() {
       kwh: '',
       rate: '',
       monthsCount: 1,
-      startDate: '',
-      endDate: '',
     });
   };
 
@@ -111,7 +111,7 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t('billing')}</h1>
@@ -145,7 +145,7 @@ export default function BillingPage() {
                     <SelectContent>
                       {tenantApts.map(a => (
                         <SelectItem key={a.id} value={a.id}>
-                          {getUnitLabel(a.floor, a.position, lang)} — {a.tenant!.name}
+                          {getUnitLabel(a.floor, a.position, lang)} — {a.tenant!.name} (Move-in: {new Date(a.tenant!.moveInDate).toLocaleDateString()})
                         </SelectItem>
                       ))}
                     </SelectContent>
