@@ -28,14 +28,12 @@ export default function DashboardLayout() {
   const [showNotifications, setShowNotifications] = useState(false);
   const { data: apartments = [] } = useApartments();
 
-  // Redirect if not authenticated or not approved
   useEffect(() => {
     if (!loading && (!profile || profile.status !== 'approved')) {
       navigate('/login');
     }
   }, [profile, loading, navigate]);
 
-  // Generate rent notifications
   const notifications = useMemo(() => {
     const notifs: { id: string; message: string }[] = [];
     apartments.forEach(apt => {
