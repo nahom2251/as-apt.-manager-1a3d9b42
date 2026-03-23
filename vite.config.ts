@@ -17,10 +17,9 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "robots.txt"],
+      includeAssets: ["favicon.ico", "robots.txt", "pwa-192x192.png", "pwa-512x512.png"],
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallbackDenylist: [/^\/~oauth/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -29,6 +28,11 @@ export default defineConfig(({ mode }) => ({
               cacheName: "google-fonts-cache",
               expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
+          },
+          {
+            urlPattern: /\/.*\.(js|css|html|png|svg)$/,
+            handler: "StaleWhileRevalidate",
+            options: { cacheName: "assets-cache" },
           },
         ],
       },
@@ -40,7 +44,8 @@ export default defineConfig(({ mode }) => ({
         background_color: "#FFFFFF",
         display: "standalone",
         orientation: "portrait-primary",
-        start_url: "/",
+        start_url: "./",
+        scope: "./",
         icons: [
           { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
           { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
