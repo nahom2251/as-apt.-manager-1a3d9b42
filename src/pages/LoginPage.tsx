@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +10,11 @@ import { LanguageToggle } from '@/components/LanguageToggle';
 import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/Footer';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const { t } = useI18n();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,14 +25,13 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // For now, demo login - will connect to Supabase later
-    setTimeout(() => {
-      localStorage.setItem('as-apt-user', JSON.stringify({
-        id: '1', email, name: 'Admin', role: 'super_admin', status: 'approved'
-      }));
-      setLoading(false);
+    const { error } = await signIn(email, password);
+    setLoading(false);
+    if (error) {
+      toast.error(error);
+    } else {
       navigate('/dashboard');
-    }, 800);
+    }
   };
 
   return (
@@ -50,49 +52,23 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">{t('email')}</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                  required
-                />
+                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t('password')}</Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
+                  <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="remember"
-                    checked={rememberMe}
-                    onCheckedChange={(c) => setRememberMe(c as boolean)}
-                  />
+                  <Checkbox id="remember" checked={rememberMe} onCheckedChange={(c) => setRememberMe(c as boolean)} />
                   <Label htmlFor="remember" className="text-sm cursor-pointer">{t('rememberMe')}</Label>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/forgot-password')}
-                  className="text-sm text-primary hover:underline"
-                >
+                <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-primary hover:underline">
                   {t('forgotPassword')}
                 </button>
               </div>
@@ -101,9 +77,7 @@ export default function LoginPage() {
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 {t('noAccount')}{' '}
-                <button type="button" onClick={() => navigate('/register')} className="text-primary hover:underline font-medium">
-                  {t('signUp')}
-                </button>
+                <button type="button" onClick={() => navigate('/register')} className="text-primary hover:underline font-medium">{t('signUp')}</button>
               </p>
             </form>
           </CardContent>

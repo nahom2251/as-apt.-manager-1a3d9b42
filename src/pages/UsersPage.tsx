@@ -1,28 +1,37 @@
-import { useState } from 'react';
 import { useI18n } from '@/lib/i18n';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/lib/auth';
+import { useAppUsers, useUpdateUserStatus } from '@/hooks/use-users';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AppUser } from '@/lib/types';
 import { Check, X } from 'lucide-react';
-
-const demoUsers: AppUser[] = [
-  { id: '2', email: 'assistant@example.com', name: 'Kebede Alemu', role: 'admin', status: 'pending' },
-  { id: '3', email: 'helper@example.com', name: 'Sara Tadesse', role: 'admin', status: 'approved' },
-];
+import { toast } from 'sonner';
 
 export default function UsersPage() {
   const { t } = useI18n();
-  const [users, setUsers] = useState<AppUser[]>(demoUsers);
+  const { profile } = useAuth();
+  const { data: users = [], isLoading } = useAppUsers();
+  const updateStatus = useUpdateUserStatus();
 
-  const updateStatus = (id: string, status: 'approved' | 'rejected') => {
-    setUsers(us => us.map(u => u.id === id ? { ...u, status } : u));
+  const isSuperAdmin = profile?.role === 'super_admin';
+
+  const handleUpdate = async (userId: string, status: 'approved' | 'rejected') => {
+    try {
+      await updateStatus.mutateAsync({ userId, status });
+      toast.success(status === 'approved' ? 'User approved' : 'User rejected');
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <h1 className="text-2xl font-bold">{t('users')}</h1>
       <div className="space-y-3">
-        {users.map(user => (
+        {users.filter(u => u.id !== profile?.id).map(user => (
           <Card key={user.id}>
             <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -37,12 +46,12 @@ export default function UsersPage() {
                 }`}>
                   {user.status === 'approved' ? t('approved') : user.status === 'rejected' ? t('rejected') : t('pending')}
                 </span>
-                {user.status === 'pending' && (
+                {isSuperAdmin && user.status === 'pending' && (
                   <>
-                    <Button size="sm" variant="ghost" className="text-success" onClick={() => updateStatus(user.id, 'approved')}>
+                    <Button size="sm" variant="ghost" className="text-success" onClick={() => handleUpdate(user.id, 'approved')}>
                       <Check className="h-4 w-4 mr-1" />{t('approve')}
                     </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateStatus(user.id, 'rejected')}>
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleUpdate(user.id, 'rejected')}>
                       <X className="h-4 w-4 mr-1" />{t('reject')}
                     </Button>
                   </>
@@ -51,6 +60,9 @@ export default function UsersPage() {
             </CardContent>
           </Card>
         ))}
+        {users.filter(u => u.id !== profile?.id).length === 0 && (
+          <Card><CardContent className="p-8 text-center text-muted-foreground">No other users registered yet.</CardContent></Card>
+        )}
       </div>
     </div>
   );

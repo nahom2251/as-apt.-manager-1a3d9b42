@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,19 +9,29 @@ import { LanguageToggle } from '@/components/LanguageToggle';
 import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/Footer';
+import { toast } from 'sonner';
 
 export default function RegisterPage() {
   const { t } = useI18n();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setLoading(true);
+    const { error } = await signUp(email, password, name);
+    setLoading(false);
+    if (error) {
+      toast.error(error);
+    } else {
+      setSubmitted(true);
+    }
   };
 
   if (submitted) {
@@ -70,30 +81,18 @@ export default function RegisterPage() {
               <div className="space-y-2">
                 <Label htmlFor="password">{t('password')}</Label>
                 <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
+                  <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
-              <Button type="submit" className="w-full gold-gradient text-primary-foreground hover:opacity-90">
-                {t('signUp')}
+              <Button type="submit" className="w-full gold-gradient text-primary-foreground hover:opacity-90" disabled={loading}>
+                {loading ? '...' : t('signUp')}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 {t('hasAccount')}{' '}
-                <button type="button" onClick={() => navigate('/login')} className="text-primary hover:underline font-medium">
-                  {t('signIn')}
-                </button>
+                <button type="button" onClick={() => navigate('/login')} className="text-primary hover:underline font-medium">{t('signIn')}</button>
               </p>
             </form>
           </CardContent>

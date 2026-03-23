@@ -1,21 +1,32 @@
 import { useState } from 'react';
 import { useI18n } from '@/lib/i18n';
+import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { Footer } from '@/components/Footer';
+import { toast } from 'sonner';
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
+  const { resetPassword } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
+    setLoading(true);
+    const { error } = await resetPassword(email);
+    setLoading(false);
+    if (error) {
+      toast.error(error);
+    } else {
+      setSent(true);
+    }
   };
 
   return (
@@ -37,7 +48,9 @@ export default function ForgotPasswordPage() {
                   <Label htmlFor="email">{t('email')}</Label>
                   <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
                 </div>
-                <Button type="submit" className="w-full gold-gradient text-primary-foreground">{t('sendResetLink')}</Button>
+                <Button type="submit" className="w-full gold-gradient text-primary-foreground" disabled={loading}>
+                  {loading ? '...' : t('sendResetLink')}
+                </Button>
                 <button type="button" onClick={() => navigate('/login')} className="block w-full text-center text-sm text-primary hover:underline">
                   {t('signIn')}
                 </button>
