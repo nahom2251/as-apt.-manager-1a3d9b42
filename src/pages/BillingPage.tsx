@@ -251,17 +251,12 @@ export default function BillingPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${bill.status === 'paid' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                    {bill.status === 'paid' ? t('paid') : t('pending')}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${bill.status === 'paid' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                    {bill.status === 'paid' ? t('paid') : (lang === 'am' ? 'ያልተከፈለ' : 'Unpaid')}
                   </span>
-                  {bill.status === 'pending' && (
+                  {bill.status !== 'paid' && (
                     <Button size="sm" onClick={() => markPaidMut.mutate(bill.id)} disabled={markPaidMut.isPending}>
                       <Check className="h-3.5 w-3.5 mr-1" />{t('markAsPaid')}
-                    </Button>
-                  )}
-                  {bill.status === 'paid' && (
-                    <Button size="sm" variant="outline" className="text-warning border-warning/30 hover:bg-warning/5" onClick={() => markUnpaidMut.mutate(bill.id)} disabled={markUnpaidMut.isPending}>
-                      <X className="h-3.5 w-3.5 mr-1" />{lang === 'am' ? 'ያልተከፈለ' : 'Mark Unpaid'}
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={() => bill.status === 'paid' ? generateReceiptPDF(toBillPdf(bill)) : generateInvoicePDF(toBillPdf(bill))}>
