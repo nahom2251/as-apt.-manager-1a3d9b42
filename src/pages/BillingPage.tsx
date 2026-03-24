@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useApartments } from '@/hooks/use-apartments';
-import { useBills, useAddBill, useMarkBillPaid, useDeleteBills } from '@/hooks/use-bills';
+import { useBills, useAddBill, useMarkBillPaid, useMarkBillUnpaid, useDeleteBills } from '@/hooks/use-bills';
 import { getUnitLabel, calculateElectricityBill } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Download, Plus, Trash2, Check } from 'lucide-react';
+import { Download, Plus, Trash2, Check, X } from 'lucide-react';
 import { generateInvoicePDF, generateReceiptPDF } from '@/lib/pdf';
 import { toast } from 'sonner';
 
@@ -22,6 +22,7 @@ export default function BillingPage() {
   const { data: bills = [], isLoading } = useBills();
   const addBillMut = useAddBill();
   const markPaidMut = useMarkBillPaid();
+  const markUnpaidMut = useMarkBillUnpaid();
   const deleteBillsMut = useDeleteBills();
 
   const [filterMonth, setFilterMonth] = useState<string>('all');
@@ -256,6 +257,11 @@ export default function BillingPage() {
                   {bill.status === 'pending' && (
                     <Button size="sm" onClick={() => markPaidMut.mutate(bill.id)} disabled={markPaidMut.isPending}>
                       <Check className="h-3.5 w-3.5 mr-1" />{t('markAsPaid')}
+                    </Button>
+                  )}
+                  {bill.status === 'paid' && (
+                    <Button size="sm" variant="outline" className="text-warning border-warning/30 hover:bg-warning/5" onClick={() => markUnpaidMut.mutate(bill.id)} disabled={markUnpaidMut.isPending}>
+                      <X className="h-3.5 w-3.5 mr-1" />{lang === 'am' ? 'ያልተከፈለ' : 'Mark Unpaid'}
                     </Button>
                   )}
                   <Button size="sm" variant="outline" onClick={() => bill.status === 'paid' ? generateReceiptPDF(toBillPdf(bill)) : generateInvoicePDF(toBillPdf(bill))}>

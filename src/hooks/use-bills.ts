@@ -60,6 +60,20 @@ export function useMarkBillPaid() {
   });
 }
 
+export function useMarkBillUnpaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (billId: string) => {
+      const { error } = await supabase
+        .from('bills')
+        .update({ status: 'pending', paid_at: null })
+        .eq('id', billId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bills'] }),
+  });
+}
+
 export function useDeleteBills() {
   const qc = useQueryClient();
   return useMutation({
