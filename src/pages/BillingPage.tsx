@@ -22,6 +22,7 @@ export default function BillingPage() {
   const { data: bills = [], isLoading } = useBills();
   const addBillMut = useAddBill();
   const markPaidMut = useMarkBillPaid();
+  const markUnpaidMut = useMarkBillUnpaid();
   const deleteBillsMut = useDeleteBills();
 
   const [filterMonth, setFilterMonth] = useState<string>('all');
