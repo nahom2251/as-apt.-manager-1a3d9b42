@@ -259,6 +259,11 @@ export default function BillingPage() {
                       <Check className="h-3.5 w-3.5 mr-1" />{t('markAsPaid')}
                     </Button>
                   )}
+                  {bill.status === 'paid' && (
+                    <Button size="sm" variant="outline" className="text-warning border-warning/30 hover:bg-warning/5" onClick={() => markUnpaidMut.mutate(bill.id)} disabled={markUnpaidMut.isPending}>
+                      <X className="h-3.5 w-3.5 mr-1" />{lang === 'am' ? 'ያልተከፈለ' : 'Mark Unpaid'}
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={() => bill.status === 'paid' ? generateReceiptPDF(toBillPdf(bill)) : generateInvoicePDF(toBillPdf(bill))}>
                     <Download className="h-3.5 w-3.5 mr-1" />
                     {bill.status === 'paid' ? t('downloadReceipt') : t('downloadInvoice')}
