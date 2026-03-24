@@ -103,15 +103,3 @@ export function useUpdateTenant() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
   });
 }
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ apartmentId, paymentMonths }: { apartmentId: string; paymentMonths: number }) => {
-      const { error } = await supabase
-        .from('tenants')
-        .update({ payment_months: paymentMonths })
-        .eq('apartment_id', apartmentId);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
-  });
-}
