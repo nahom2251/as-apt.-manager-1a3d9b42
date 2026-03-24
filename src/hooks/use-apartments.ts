@@ -81,7 +81,28 @@ export function useRemoveTenant() {
   });
 }
 
-export function useUpdateTenantPayment() {
+export function useUpdateTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ apartmentId, tenant }: {
+      apartmentId: string;
+      tenant: { name: string; phone: string; move_in_date: string; monthly_rent: number; payment_months: number };
+    }) => {
+      const { error } = await supabase
+        .from('tenants')
+        .update({
+          name: tenant.name,
+          phone: tenant.phone,
+          move_in_date: tenant.move_in_date,
+          monthly_rent: tenant.monthly_rent,
+          payment_months: tenant.payment_months,
+        })
+        .eq('apartment_id', apartmentId);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['apartments'] }),
+  });
+}
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ apartmentId, paymentMonths }: { apartmentId: string; paymentMonths: number }) => {
