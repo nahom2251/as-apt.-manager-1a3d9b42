@@ -56,29 +56,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, fetchProfile]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const initSession = async () => {
+      setLoading(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!isMounted) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      }
+
+      setLoading(false);
+    };
+
+    initSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!isMounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
+
         if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
+          await fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }
+
         setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const signIn = useCallback(async (email: string, password: string) => {
@@ -108,7 +127,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, resetPassword, refreshProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        profile,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+        resetPassword,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
