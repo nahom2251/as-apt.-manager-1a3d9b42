@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Download, Plus, Trash2, Check } from 'lucide-react';
+import { Download, Plus, Trash2, Check, X } from 'lucide-react';
 import { generateInvoicePDF, generateReceiptPDF } from '@/lib/pdf';
 import { toast } from 'sonner';
 
