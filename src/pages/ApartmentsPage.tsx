@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useI18n } from '@/lib/i18n';
-import { useApartments, useSetTenant, useRemoveTenant } from '@/hooks/use-apartments';
+import { useApartments, useSetTenant, useRemoveTenant, useUpdateTenant } from '@/hooks/use-apartments';
 import { getUnitLabel, calculateRentStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { UserPlus, UserMinus, Phone, Calendar, DollarSign, Clock } from 'lucide-react';
+import { UserPlus, UserMinus, Phone, Calendar, DollarSign, Clock, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ApartmentsPage() {
@@ -16,31 +16,51 @@ export default function ApartmentsPage() {
   const { data: apartments = [], isLoading } = useApartments();
   const setTenantMut = useSetTenant();
   const removeTenantMut = useRemoveTenant();
+  const updateTenantMut = useUpdateTenant();
   const [editingApt, setEditingApt] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleSave = useCallback(async () => {
     if (!editingApt) return;
     try {
-      await setTenantMut.mutateAsync({
-        apartmentId: editingApt,
-        tenant: {
-          name: form.name,
-          phone: form.phone,
-          move_in_date: form.moveInDate,
-          monthly_rent: Number(form.monthlyRent),
-          payment_months: Number(form.paymentMonths),
-        },
-      });
+      const tenantData = {
+        name: form.name,
+        phone: form.phone,
+        move_in_date: form.moveInDate,
+        monthly_rent: Number(form.monthlyRent),
+        payment_months: Number(form.paymentMonths),
+      };
+
+      if (isEditing) {
+        await updateTenantMut.mutateAsync({ apartmentId: editingApt, tenant: tenantData });
+        toast.success(lang === 'am' ? 'ተከራይ ተዘምኗል' : 'Tenant updated');
+      } else {
+        await setTenantMut.mutateAsync({ apartmentId: editingApt, tenant: tenantData });
+        toast.success(lang === 'am' ? 'ተከራይ ተጨምሯል' : 'Tenant added');
+      }
       setDialogOpen(false);
       setEditingApt(null);
+      setIsEditing(false);
       setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
-      toast.success('Tenant added');
     } catch (err: any) {
       toast.error(err.message);
     }
-  }, [editingApt, form, setTenantMut]);
+  }, [editingApt, form, isEditing, setTenantMut, updateTenantMut, lang]);
+
+  const handleEdit = useCallback((apt: any) => {
+    setEditingApt(apt.id);
+    setIsEditing(true);
+    setForm({
+      name: apt.tenant.name,
+      phone: apt.tenant.phone,
+      moveInDate: apt.tenant.move_in_date,
+      monthlyRent: String(apt.tenant.monthly_rent),
+      paymentMonths: String(apt.tenant.payment_months),
+    });
+    setDialogOpen(true);
+  }, []);
 
   const handleRemove = useCallback(async (aptId: string) => {
     if (!confirm(t('deleteConfirm'))) return;
@@ -78,9 +98,60 @@ export default function ApartmentsPage() {
     return <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
   }
 
+  const isSaving = setTenantMut.isPending || updateTenantMut.isPending;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <h1 className="text-2xl font-bold">{t('apartments')}</h1>
+
+      {/* Shared dialog for add/edit */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open);
+        if (!open) {
+          setEditingApt(null);
+          setIsEditing(false);
+          setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isEditing
+                ? `${lang === 'am' ? 'ተከራይ አርትዕ' : 'Edit Tenant'} — ${editingApt ? getUnitLabel(
+                    apartments.find(a => a.id === editingApt)?.floor || 0,
+                    apartments.find(a => a.id === editingApt)?.position || '',
+                    lang
+                  ) : ''}`
+                : `${t('addTenant')} — ${editingApt ? getUnitLabel(
+                    apartments.find(a => a.id === editingApt)?.floor || 0,
+                    apartments.find(a => a.id === editingApt)?.position || '',
+                    lang
+                  ) : ''}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1"><Label>{t('name')}</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>{t('phone')}</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>{t('moveInDate')}</Label><Input type="date" value={form.moveInDate} onChange={e => setForm(f => ({ ...f, moveInDate: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>{t('monthlyRent')}</Label><Input type="number" value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: e.target.value }))} /></div>
+            <div className="space-y-1">
+              <Label>{lang === 'am' ? 'የክፍያ ወራት (1-12)' : 'Payment Months (1-12)'}</Label>
+              <Select value={form.paymentMonths} onValueChange={v => setForm(f => ({ ...f, paymentMonths: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => (
+                    <SelectItem key={i + 1} value={String(i + 1)}>{i + 1} {lang === 'am' ? 'ወር' : 'month(s)'}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSave} className="w-full gold-gradient text-primary-foreground" disabled={isSaving}>
+              {isSaving ? '...' : t('save')}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {apartments.map(apt => {
           const unit = getUnitLabel(apt.floor, apt.position, lang);
@@ -122,47 +193,24 @@ export default function ApartmentsPage() {
                         </div>
                       )}
                     </div>
-                    <Button variant="outline" size="sm" className="w-full text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => handleRemove(apt.id)}>
-                      <UserMinus className="h-3.5 w-3.5 mr-1.5" />{t('removeTenant')}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(apt)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" />{lang === 'am' ? 'አርትዕ' : 'Edit'}
+                      </Button>
+                      <Button variant="outline" size="sm" className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => handleRemove(apt.id)}>
+                        <UserMinus className="h-3.5 w-3.5 mr-1.5" />{t('removeTenant')}
+                      </Button>
+                    </div>
                   </>
                 ) : (
-                  <Dialog open={dialogOpen && editingApt === apt.id} onOpenChange={(open) => {
-                    setDialogOpen(open);
-                    if (open) {
-                      setEditingApt(apt.id);
-                      setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
-                    }
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                    setEditingApt(apt.id);
+                    setIsEditing(false);
+                    setForm({ name: '', phone: '', moveInDate: '', monthlyRent: '', paymentMonths: '1' });
+                    setDialogOpen(true);
                   }}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full">
-                        <UserPlus className="h-3.5 w-3.5 mr-1.5" />{t('addTenant')}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader><DialogTitle>{t('addTenant')} — {unit}</DialogTitle></DialogHeader>
-                      <div className="space-y-3 pt-2">
-                        <div className="space-y-1"><Label>{t('name')}</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
-                        <div className="space-y-1"><Label>{t('phone')}</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
-                        <div className="space-y-1"><Label>{t('moveInDate')}</Label><Input type="date" value={form.moveInDate} onChange={e => setForm(f => ({ ...f, moveInDate: e.target.value }))} /></div>
-                        <div className="space-y-1"><Label>{t('monthlyRent')}</Label><Input type="number" value={form.monthlyRent} onChange={e => setForm(f => ({ ...f, monthlyRent: e.target.value }))} /></div>
-                        <div className="space-y-1">
-                          <Label>{lang === 'am' ? 'የክፍያ ወራት (1-12)' : 'Payment Months (1-12)'}</Label>
-                          <Select value={form.paymentMonths} onValueChange={v => setForm(f => ({ ...f, paymentMonths: v }))}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 12 }, (_, i) => (
-                                <SelectItem key={i + 1} value={String(i + 1)}>{i + 1} {lang === 'am' ? 'ወር' : 'month(s)'}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button onClick={handleSave} className="w-full gold-gradient text-primary-foreground" disabled={setTenantMut.isPending}>
-                          {setTenantMut.isPending ? '...' : t('save')}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                    <UserPlus className="h-3.5 w-3.5 mr-1.5" />{t('addTenant')}
+                  </Button>
                 )}
               </CardContent>
             </Card>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useApartments } from '@/hooks/use-apartments';
-import { useBills, useAddBill, useMarkBillPaid, useDeleteBills } from '@/hooks/use-bills';
+import { useBills, useAddBill, useMarkBillPaid, useMarkBillUnpaid, useDeleteBills } from '@/hooks/use-bills';
 import { getUnitLabel, calculateElectricityBill } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
